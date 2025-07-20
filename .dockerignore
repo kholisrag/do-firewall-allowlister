@@ -1,0 +1,45 @@
+# Build artifacts
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test files
+*.test
+coverage.out
+coverage.html
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# CI/CD
+.github/
+.goreleaser.yaml
+
+# Task files
+Taskfile.yml
+
+# Docker
+Dockerfile*
+.dockerignore
+
+# Temporary files
+tmp/
+temp/

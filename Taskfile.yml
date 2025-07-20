@@ -1,0 +1,172 @@
+version: "3"
+
+vars:
+  BINARY_NAME: do-firewall-allowlister
+  MAIN_PATH: ./cmd/do-firewall-allowlister
+  BUILD_DIR: ./dist
+  DOCKER_IMAGE: ghcr.io/kholisrag/do-firewall-allowlister
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+
+env:
+  CGO_ENABLED: 0
+  GOOS: "{{.GOOS | default OS}}"
+  GOARCH: "{{.GOARCH | default ARCH}}"
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - rm -f {{.BINARY_NAME}}
+      - go clean -cache
+      - docker system prune -f --filter label=stage=builder 2>/dev/null || true
+
+  deps:
+    desc: Download and tidy dependencies
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+      - gofumpt -w . 2>/dev/null || true
+
+  lint:
+    desc: Run linters
+    cmds:
+      - go vet ./...
+      - golangci-lint run 2>/dev/null || echo "golangci-lint not installed, skipping"
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -race -coverprofile=coverage.out ./...
+
+  test:short:
+    desc: Run short tests
+    cmds:
+      - go test -short -race ./...
+
+  test:integration:
+    desc: Run integration tests
+    cmds:
+      - go test -tags=integration ./test/...
+
+  test:coverage:
+    desc: Run tests with coverage report
+    deps: [test]
+    cmds:
+      - go tool cover -html=coverage.out -o coverage.html
+      - echo "Coverage report generated{{":"}} coverage.html"
+
+  build:
+    desc: Build binary for current platform
+    deps: [deps]
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - go build -ldflags="-s -w -X main.version={{.VERSION}}" -o {{.BUILD_DIR}}/{{.BINARY_NAME}} {{.MAIN_PATH}}
+
+  build:all:
+    desc: Build binaries for all platforms
+    deps: [clean, deps]
+    cmds:
+      - task: build:linux
+      - task: build:darwin
+      - task: build:windows
+
+  build:linux:
+    desc: Build Linux binary
+    env:
+      GOOS: linux
+      GOARCH: amd64
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}/linux_amd64
+      - go build -ldflags="-s -w -X main.version={{.VERSION}}" -o {{.BUILD_DIR}}/linux_amd64/{{.BINARY_NAME}} {{.MAIN_PATH}}
+
+  build:darwin:
+    desc: Build macOS binary
+    env:
+      GOOS: darwin
+      GOARCH: amd64
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}/darwin_amd64
+      - go build -ldflags="-s -w -X main.version={{.VERSION}}" -o {{.BUILD_DIR}}/darwin_amd64/{{.BINARY_NAME}} {{.MAIN_PATH}}
+
+  build:windows:
+    desc: Build Windows binary
+    env:
+      GOOS: windows
+      GOARCH: amd64
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}/windows_amd64
+      - go build -ldflags="-s -w -X main.version={{.VERSION}}" -o {{.BUILD_DIR}}/windows_amd64/{{.BINARY_NAME}}.exe {{.MAIN_PATH}}
+
+  docker:build:
+    desc: Build Docker image
+    cmds:
+      - docker build -t {{.DOCKER_IMAGE}}:{{.VERSION}} -t {{.DOCKER_IMAGE}}:latest .
+
+  docker:run:
+    desc: Run Docker container
+    deps: [docker:build]
+    cmds:
+      - docker run --rm -it {{.DOCKER_IMAGE}}:latest --help
+
+  docker:push:
+    desc: Push Docker image
+    deps: [docker:build]
+    cmds:
+      - docker push {{.DOCKER_IMAGE}}:{{.VERSION}}
+      - docker push {{.DOCKER_IMAGE}}:latest
+
+  release:dry:
+    desc: Dry run release with GoReleaser
+    cmds:
+      - goreleaser release --snapshot --clean --skip=publish --skip=docker
+
+  release:
+    desc: Create release with GoReleaser
+    cmds:
+      - goreleaser release --clean
+
+  dev:
+    desc: Run in development mode
+    deps: [build]
+    cmds:
+      - ./{{.BUILD_DIR}}/{{.BINARY_NAME}} --help
+
+  install:
+    desc: Install binary to GOPATH/bin
+    deps: [build]
+    cmds:
+      - go install {{.MAIN_PATH}}
+
+  validate:
+    desc: Validate configuration
+    deps: [build]
+    cmds:
+      - ./{{.BUILD_DIR}}/{{.BINARY_NAME}} validate --config config.yaml
+
+  check:
+    desc: Run all checks (format, lint, test)
+    cmds:
+      - task: fmt
+      - task: lint
+      - task: test:short
+
+  ci:
+    desc: Run CI pipeline
+    cmds:
+      - task: deps
+      - task: fmt
+      - task: lint
+      - task: test
+      - task: build:all

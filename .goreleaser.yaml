@@ -1,0 +1,273 @@
+# GoReleaser configuration for DigitalOcean Firewall Allowlister
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+
+version: 2
+
+# Global environment variables
+env:
+  - CGO_ENABLED=0
+
+# Pre-build hooks
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+# Build configuration
+builds:
+  - id: do-firewall-allowlister
+    binary: do-firewall-allowlister
+    main: ./cmd/do-firewall-allowlister
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - "6"
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm64
+      - goos: windows
+        goarch: arm
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+    flags:
+      - -trimpath
+
+# Archive configuration
+archives:
+  - id: default
+    ids:
+      - do-firewall-allowlister
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
+    files:
+      - README.md
+      - LICENSE
+      - config.yaml
+
+# Checksum configuration
+checksum:
+  name_template: "checksums.txt"
+
+# Snapshot configuration
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+# Docker configuration
+dockers:
+  # GitHub Container Registry (ghcr.io) - amd64
+  - image_templates:
+      - "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
+      - "ghcr.io/kholisrag/do-firewall-allowlister:latest-amd64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/amd64"
+    goarch: amd64
+    goos: linux
+  # GitHub Container Registry (ghcr.io) - arm64
+  - image_templates:
+      - "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
+      - "ghcr.io/kholisrag/do-firewall-allowlister:latest-arm64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/arm64"
+    goarch: arm64
+    goos: linux
+  # Docker Hub - amd64
+  - image_templates:
+      - "kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
+      - "kholisrag/do-firewall-allowlister:latest-amd64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/amd64"
+    goarch: amd64
+    goos: linux
+  # Docker Hub - arm64
+  - image_templates:
+      - "kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
+      - "kholisrag/do-firewall-allowlister:latest-arm64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/arm64"
+    goarch: arm64
+    goos: linux
+  # Quay.io - amd64
+  - image_templates:
+      - "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
+      - "quay.io/kholisrag/do-firewall-allowlister:latest-amd64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/amd64"
+    goarch: amd64
+    goos: linux
+  # Quay.io - arm64
+  - image_templates:
+      - "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
+      - "quay.io/kholisrag/do-firewall-allowlister:latest-arm64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/arm64"
+    goarch: arm64
+    goos: linux
+
+# Docker manifest for multi-arch images
+docker_manifests:
+  # GitHub Container Registry (ghcr.io) manifests
+  - name_template: "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
+      - "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/kholisrag/do-firewall-allowlister:latest"
+    image_templates:
+      - "ghcr.io/kholisrag/do-firewall-allowlister:latest-amd64"
+      - "ghcr.io/kholisrag/do-firewall-allowlister:latest-arm64"
+  # Docker Hub manifests
+  - name_template: "kholisrag/do-firewall-allowlister:{{ .Version }}"
+    image_templates:
+      - "kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
+      - "kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
+  - name_template: "kholisrag/do-firewall-allowlister:latest"
+    image_templates:
+      - "kholisrag/do-firewall-allowlister:latest-amd64"
+      - "kholisrag/do-firewall-allowlister:latest-arm64"
+  # Quay.io manifests
+  - name_template: "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}"
+    image_templates:
+      - "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
+      - "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
+  - name_template: "quay.io/kholisrag/do-firewall-allowlister:latest"
+    image_templates:
+      - "quay.io/kholisrag/do-firewall-allowlister:latest-amd64"
+      - "quay.io/kholisrag/do-firewall-allowlister:latest-arm64"
+
+# Changelog configuration
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+      - "merge conflict"
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: "Bug fixes"
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: "Performance improvements"
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Others
+      order: 999
+
+# Release configuration
+release:
+  footer: |
+    ## Docker Images
+
+    Multi-architecture Docker images are available from multiple registries:
+
+    ### GitHub Container Registry
+    ```bash
+    docker pull ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}
+    docker pull ghcr.io/kholisrag/do-firewall-allowlister:latest
+    ```
+
+    ### Docker Hub
+    ```bash
+    docker pull kholisrag/do-firewall-allowlister:{{ .Version }}
+    docker pull kholisrag/do-firewall-allowlister:latest
+    ```
+
+    ### Quay.io
+    ```bash
+    docker pull quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}
+    docker pull quay.io/kholisrag/do-firewall-allowlister:latest
+    ```
+
+    ## Installation
+
+    ### Using Go
+    ```bash
+    go install github.com/kholisrag/do-firewall-allowlister/cmd/do-firewall-allowlister@{{ .Version }}
+    ```
+
+    ### Using Task
+    ```bash
+    task install
+    ```
+
+    ---
+
+    **Full Changelog**: https://github.com/kholisrag/do-firewall-allowlister/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
