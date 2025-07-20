@@ -105,6 +105,31 @@ jobs:
           echo "version=${{ github.event.inputs.version_override }}" >> $GITHUB_OUTPUT
         id: version_override
 
+      - name: Generate version summary
+        run: |
+          echo "## 🏷️ Release Version Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | \`${{ steps.version_override.outputs.version || steps.semantic.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version Tag** | \`${{ steps.version_override.outputs.version_tag || steps.semantic.outputs.version_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Is Pre-release** | ${{ steps.release_type.outputs.is_prerelease }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Should Release** | ${{ steps.release_type.outputs.should_release }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Trigger Event** | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch/Tag** | \`${{ github.ref }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit SHA** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ steps.release_type.outputs.should_release }}" == "true" ]]; then
+            if [[ "${{ steps.release_type.outputs.is_prerelease }}" == "true" ]]; then
+              echo "🚧 **This will be a pre-release** - suitable for testing and development." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ **This will be a stable release** - ready for production use." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "ℹ️ **No release will be created** - this is a validation run only." >> $GITHUB_STEP_SUMMARY
+          fi
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -134,6 +159,38 @@ jobs:
         with:
           file: ./coverage.out
           fail_ci_if_error: false
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f coverage.out ]; then
+            # Calculate coverage percentage
+            COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
+            echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| **Test Coverage** | $COVERAGE |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Go Version** | $(go version | cut -d' ' -f3) |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Platform** | ${{ runner.os }} |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [[ "$COVERAGE" == *"100.0%"* ]]; then
+              echo "🎉 **Perfect test coverage achieved!**" >> $GITHUB_STEP_SUMMARY
+            elif [[ "$COVERAGE" > "80.0%" ]]; then
+              echo "✅ **Good test coverage** - above 80%" >> $GITHUB_STEP_SUMMARY
+            elif [[ "$COVERAGE" > "60.0%" ]]; then
+              echo "⚠️ **Moderate test coverage** - consider adding more tests" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Low test coverage** - more tests needed" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "❌ **No coverage data available**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Coverage report has been uploaded to [Codecov](https://codecov.io/gh/${{ github.repository }})." >> $GITHUB_STEP_SUMMARY
 
   goreleaser:
     runs-on: ubuntu-latest
@@ -235,3 +292,129 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ env.RELEASE_TAG || needs.version.outputs.version_tag }}
           IS_PRERELEASE: ${{ needs.version.outputs.is_prerelease }}
+
+      - name: Generate release summary
+        if: success()
+        run: |
+          VERSION_TAG="${{ env.RELEASE_TAG || needs.version.outputs.version_tag }}"
+          IS_PRERELEASE="${{ needs.version.outputs.is_prerelease }}"
+
+          echo "## 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Release Information" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | \`$VERSION_TAG\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Release Type** | $([ "$IS_PRERELEASE" = "true" ] && echo "🚧 Pre-release" || echo "✅ Stable Release") |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | [\`${{ github.sha }}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Release Date** | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### 🐳 Docker Images" >> $GITHUB_STEP_SUMMARY
+          echo "Multi-architecture Docker images have been built and published to:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### GitHub Container Registry" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/kholisrag/do-firewall-allowlister:$VERSION_TAG" >> $GITHUB_STEP_SUMMARY
+          if [ "$IS_PRERELEASE" != "true" ]; then
+            echo "docker pull ghcr.io/kholisrag/do-firewall-allowlister:latest" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "#### Docker Hub" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull kholisrag/do-firewall-allowlister:$VERSION_TAG" >> $GITHUB_STEP_SUMMARY
+          if [ "$IS_PRERELEASE" != "true" ]; then
+            echo "docker pull kholisrag/do-firewall-allowlister:latest" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "#### Quay.io" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull quay.io/kholisrag/do-firewall-allowlister:$VERSION_TAG" >> $GITHUB_STEP_SUMMARY
+          if [ "$IS_PRERELEASE" != "true" ]; then
+            echo "docker pull quay.io/kholisrag/do-firewall-allowlister:latest" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### 🏗️ Build Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "The following platforms and architectures are supported:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Architecture | Docker Image | Binary |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------------|--------------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Linux | amd64 | ✅ | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Linux | arm64 | ✅ | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Linux | arm/v6 | ❌ | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Linux | arm/v7 | ❌ | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| macOS | amd64 | ❌ | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| macOS | arm64 | ❌ | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Windows | amd64 | ❌ | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### 🚀 Quick Start with Docker Compose" >> $GITHUB_STEP_SUMMARY
+          echo "Use the new Docker Compose configuration for easy deployment:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# Download the docker-compose.yaml file" >> $GITHUB_STEP_SUMMARY
+          echo "curl -O https://raw.githubusercontent.com/kholisrag/do-firewall-allowlister/main/docker-compose.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Create your config.yaml file" >> $GITHUB_STEP_SUMMARY
+          echo "# (See repository README for configuration details)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Start the service" >> $GITHUB_STEP_SUMMARY
+          echo "docker-compose up -d" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Check logs" >> $GITHUB_STEP_SUMMARY
+          echo "docker-compose logs -f" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### 📋 Other Installation Methods" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Using Go Install" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "go install github.com/kholisrag/do-firewall-allowlister/cmd/do-firewall-allowlister@$VERSION_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "#### Download Binary" >> $GITHUB_STEP_SUMMARY
+          echo "Pre-built binaries are available on the [releases page](https://github.com/${{ github.repository }}/releases/tag/$VERSION_TAG)." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### 🔗 Useful Links" >> $GITHUB_STEP_SUMMARY
+          echo "- 📖 [Documentation](https://github.com/${{ github.repository }}#readme)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🐛 [Report Issues](https://github.com/${{ github.repository }}/issues)" >> $GITHUB_STEP_SUMMARY
+          echo "- 💬 [Discussions](https://github.com/${{ github.repository }}/discussions)" >> $GITHUB_STEP_SUMMARY
+          echo "- 📦 [All Releases](https://github.com/${{ github.repository }}/releases)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🐳 [Docker Images](https://github.com/${{ github.repository }}/pkgs/container/do-firewall-allowlister)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            echo "### ⚠️ Pre-release Notice" >> $GITHUB_STEP_SUMMARY
+            echo "This is a pre-release version intended for testing and development. Please report any issues you encounter." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ✅ Production Ready" >> $GITHUB_STEP_SUMMARY
+            echo "This stable release has been tested and is ready for production use." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Generate failure summary
+        if: failure()
+        run: |
+          echo "## ❌ Release Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The release process encountered an error. Please check the workflow logs for details." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 Troubleshooting Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check the workflow logs above for specific error messages" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify all required secrets are configured:" >> $GITHUB_STEP_SUMMARY
+          echo "   - \`DOCKERHUB_USERNAME\` and \`DOCKERHUB_TOKEN\`" >> $GITHUB_STEP_SUMMARY
+          echo "   - \`QUAY_USERNAME\` and \`QUAY_TOKEN\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Ensure the version tag is valid and follows semantic versioning" >> $GITHUB_STEP_SUMMARY
+          echo "4. Check if there are any conflicts with existing releases" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📞 Need Help?" >> $GITHUB_STEP_SUMMARY
+          echo "- [Open an issue](https://github.com/${{ github.repository }}/issues/new)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Check existing issues](https://github.com/${{ github.repository }}/issues)" >> $GITHUB_STEP_SUMMARY

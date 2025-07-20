@@ -1,0 +1,48 @@
+services:
+  do-firewall-allowlister:
+    # Use the latest stable image from GitHub Container Registry
+    # You can also use Docker Hub (kholisrag/do-firewall-allowlister:latest)
+    # or Quay.io (quay.io/kholisrag/do-firewall-allowlister:latest)
+    image: ghcr.io/kholisrag/do-firewall-allowlister:latest
+    container_name: do-firewall-allowlister
+
+    # Restart policy for production use
+    restart: unless-stopped
+
+    # Mount the local config.yaml file into the container
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro # Read-only mount for security
+
+    # Run in daemon mode with the mounted config file
+    command: ["daemon", "--config", "/app/config.yaml"]
+    # Resource limits (optional, adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.05"
+        reservations:
+          memory: 64M
+          cpus: "0.01"
+
+    # Health check to monitor service status
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/usr/local/bin/do-firewall-allowlister",
+          "validate",
+          "--config",
+          "/app/config.yaml",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -75,12 +75,20 @@ func (c *Client) UpdateFirewallRules(
 			zap.Strings("sources", validSources))
 	}
 
+	// Log droplets that will be preserved
+	if len(firewall.DropletIDs) > 0 {
+		c.logger.Debug("Preserving droplet attachments during firewall update",
+			zap.String("firewall_id", firewallID),
+			zap.Ints("droplet_ids", firewall.DropletIDs))
+	}
+
 	// Update the firewall
 	updateRequest := &godo.FirewallRequest{
 		Name:          firewall.Name,
 		InboundRules:  newInboundRules,
 		OutboundRules: firewall.OutboundRules,
 		Tags:          firewall.Tags,
+		DropletIDs:    firewall.DropletIDs, // Preserve existing droplet attachments
 	}
 
 	_, _, err = c.client.Firewalls.Update(ctx, firewallID, updateRequest)
@@ -93,7 +101,8 @@ func (c *Client) UpdateFirewallRules(
 
 	c.logger.Info("Successfully updated firewall rules",
 		zap.String("firewall_id", firewallID),
-		zap.Int("total_inbound_rules", len(newInboundRules)))
+		zap.Int("total_inbound_rules", len(newInboundRules)),
+		zap.Int("preserved_droplets", len(firewall.DropletIDs)))
 
 	return nil
 }

@@ -2,6 +2,12 @@
 
 A Go service that automatically manages DigitalOcean firewall rules by allowing traffic from supported sources. The service can run as a daemon with scheduled updates or as a one-shot command.
 
+> Note: This project is personal project need for my own use case.
+> make this publicly available for anyone who might find it useful.
+> since this is also me for learning and trying out new things.
+> so it might not be the best code, but it works for me.
+> and i'm always open to suggestions and improvements.
+
 ## Features
 
 - 🔥 **Automatic Firewall Management**: Updates DigitalOcean firewall rules automatically
