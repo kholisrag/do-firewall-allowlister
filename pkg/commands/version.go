@@ -20,7 +20,6 @@ type VersionInfo struct {
 	Version   string `json:"version"`
 	Commit    string `json:"commit"`
 	Date      string `json:"date"`
-	BuiltBy   string `json:"builtBy"`
 	GoVersion string `json:"goVersion"`
 	Platform  string `json:"platform"`
 }
@@ -47,7 +46,6 @@ func runVersion(output string, buildInfo BuildInfo) error {
 		Version:   buildInfo.Version,
 		Commit:    buildInfo.Commit,
 		Date:      buildInfo.Date,
-		BuiltBy:   "goreleaser",
 		GoVersion: runtime.Version(),
 		Platform:  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
 	}
@@ -63,7 +61,6 @@ func runVersion(output string, buildInfo BuildInfo) error {
 		fmt.Printf("do-firewall-allowlister version %s\n", versionInfo.Version)
 		fmt.Printf("  commit: %s\n", versionInfo.Commit)
 		fmt.Printf("  built: %s\n", versionInfo.Date)
-		fmt.Printf("  built by: %s\n", versionInfo.BuiltBy)
 		fmt.Printf("  go version: %s\n", versionInfo.GoVersion)
 		fmt.Printf("  platform: %s\n", versionInfo.Platform)
 	default:

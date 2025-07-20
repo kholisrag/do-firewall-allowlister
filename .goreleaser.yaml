@@ -76,7 +76,7 @@ dockers:
   # GitHub Container Registry (ghcr.io) - amd64
   - image_templates:
       - "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
-      - '{{ if not (env "IS_PRERELEASE" | eq "true") }}ghcr.io/kholisrag/do-firewall-allowlister:latest-amd64{{ end }}'
+      - "{{ if not .IsPrerelease }}ghcr.io/kholisrag/do-firewall-allowlister:latest-amd64{{ end }}"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -92,7 +92,7 @@ dockers:
   # GitHub Container Registry (ghcr.io) - arm64
   - image_templates:
       - "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
-      - '{{ if not (env "IS_PRERELEASE" | eq "true") }}ghcr.io/kholisrag/do-firewall-allowlister:latest-arm64{{ end }}'
+      - "{{ if not .IsPrerelease }}ghcr.io/kholisrag/do-firewall-allowlister:latest-arm64{{ end }}"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -108,7 +108,7 @@ dockers:
   # Docker Hub - amd64
   - image_templates:
       - "kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
-      - '{{ if not (env "IS_PRERELEASE" | eq "true") }}kholisrag/do-firewall-allowlister:latest-amd64{{ end }}'
+      - "{{ if not .IsPrerelease }}kholisrag/do-firewall-allowlister:latest-amd64{{ end }}"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -124,7 +124,7 @@ dockers:
   # Docker Hub - arm64
   - image_templates:
       - "kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
-      - '{{ if not (env "IS_PRERELEASE" | eq "true") }}kholisrag/do-firewall-allowlister:latest-arm64{{ end }}'
+      - "{{ if not .IsPrerelease }}kholisrag/do-firewall-allowlister:latest-arm64{{ end }}"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -140,7 +140,7 @@ dockers:
   # Quay.io - amd64
   - image_templates:
       - "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
-      - '{{ if not (env "IS_PRERELEASE" | eq "true") }}quay.io/kholisrag/do-firewall-allowlister:latest-amd64{{ end }}'
+      - "{{ if not .IsPrerelease }}quay.io/kholisrag/do-firewall-allowlister:latest-amd64{{ end }}"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -156,7 +156,7 @@ dockers:
   # Quay.io - arm64
   - image_templates:
       - "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
-      - '{{ if not (env "IS_PRERELEASE" | eq "true") }}quay.io/kholisrag/do-firewall-allowlister:latest-arm64{{ end }}'
+      - "{{ if not .IsPrerelease }}quay.io/kholisrag/do-firewall-allowlister:latest-arm64{{ end }}"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -177,31 +177,28 @@ docker_manifests:
     image_templates:
       - "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
       - "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
-  - name_template: '{{ if not (env "IS_PRERELEASE" | eq "true") }}ghcr.io/kholisrag/do-firewall-allowlister:latest{{ end }}'
+  - name_template: "{{ if not .IsPrerelease }}ghcr.io/kholisrag/do-firewall-allowlister:latest{{ end }}"
     image_templates:
-      - '{{ if not (env "IS_PRERELEASE" | eq "true") }}ghcr.io/kholisrag/do-firewall-allowlister:latest-amd64{{ end }}'
-      - '{{ if not (env "IS_PRERELEASE" | eq "true") }}ghcr.io/kholisrag/do-firewall-allowlister:latest-arm64{{ end }}'
-    skip_push: '{{ env "IS_PRERELEASE" | eq "true" }}'
+      - "{{ if not .IsPrerelease }}ghcr.io/kholisrag/do-firewall-allowlister:latest-amd64{{ end }}"
+      - "{{ if not .IsPrerelease }}ghcr.io/kholisrag/do-firewall-allowlister:latest-arm64{{ end }}"
   # Docker Hub manifests
   - name_template: "kholisrag/do-firewall-allowlister:{{ .Version }}"
     image_templates:
       - "kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
       - "kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
-  - name_template: '{{ if not (env "IS_PRERELEASE" | eq "true") }}kholisrag/do-firewall-allowlister:latest{{ end }}'
+  - name_template: "{{ if not .IsPrerelease }}kholisrag/do-firewall-allowlister:latest{{ end }}"
     image_templates:
-      - '{{ if not (env "IS_PRERELEASE" | eq "true") }}kholisrag/do-firewall-allowlister:latest-amd64{{ end }}'
-      - '{{ if not (env "IS_PRERELEASE" | eq "true") }}kholisrag/do-firewall-allowlister:latest-arm64{{ end }}'
-    skip_push: '{{ env "IS_PRERELEASE" | eq "true" }}'
+      - "{{ if not .IsPrerelease }}kholisrag/do-firewall-allowlister:latest-amd64{{ end }}"
+      - "{{ if not .IsPrerelease }}kholisrag/do-firewall-allowlister:latest-arm64{{ end }}"
   # Quay.io manifests
   - name_template: "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}"
     image_templates:
       - "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
       - "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
-  - name_template: '{{ if not (env "IS_PRERELEASE" | eq "true") }}quay.io/kholisrag/do-firewall-allowlister:latest{{ end }}'
+  - name_template: "{{ if not .IsPrerelease }}quay.io/kholisrag/do-firewall-allowlister:latest{{ end }}"
     image_templates:
-      - '{{ if not (env "IS_PRERELEASE" | eq "true") }}quay.io/kholisrag/do-firewall-allowlister:latest-amd64{{ end }}'
-      - '{{ if not (env "IS_PRERELEASE" | eq "true") }}quay.io/kholisrag/do-firewall-allowlister:latest-arm64{{ end }}'
-    skip_push: '{{ env "IS_PRERELEASE" | eq "true" }}'
+      - "{{ if not .IsPrerelease }}quay.io/kholisrag/do-firewall-allowlister:latest-amd64{{ end }}"
+      - "{{ if not .IsPrerelease }}quay.io/kholisrag/do-firewall-allowlister:latest-arm64{{ end }}"
 
 # Changelog configuration
 changelog:
@@ -259,7 +256,7 @@ changelog:
 # Release configuration
 release:
   # Set prerelease based on environment variable
-  prerelease: auto
+  prerelease: '{{ if env "IS_PRERELEASE" }}{{ env "IS_PRERELEASE" | eq "true" }}{{ else }}auto{{ end }}'
   mode: replace
   # Skip release if it already exists
   skip_upload: auto
