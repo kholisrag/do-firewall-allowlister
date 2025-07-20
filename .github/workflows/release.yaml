@@ -225,7 +225,21 @@ jobs:
           echo "✓ All release validations passed"
 
       # Run GoReleaser to build and publish multi-platform Docker images to all registries
-      - name: Run GoReleaser
+      - name: Run GoReleaser (Pre-release)
+        if: needs.version.outputs.is_prerelease == 'true'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean --skip=ghcr-amd64-latest,ghcr-arm64-latest,dockerhub-amd64-latest,dockerhub-arm64-latest,quay-amd64-latest,quay-arm64-latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ env.RELEASE_TAG || needs.version.outputs.version_tag }}
+          IS_PRERELEASE: ${{ needs.version.outputs.is_prerelease }}
+
+      # Run GoReleaser to build and publish multi-platform Docker images to all registries
+      - name: Run GoReleaser (Full release)
+        if: needs.version.outputs.is_prerelease == 'false'
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
