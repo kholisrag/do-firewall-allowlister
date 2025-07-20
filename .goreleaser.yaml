@@ -73,10 +73,10 @@ snapshot:
 
 # Docker configuration
 dockers:
-  # GitHub Container Registry (ghcr.io) - amd64 - Version tags
-  - id: ghcr-amd64-version
-    image_templates:
+  # GitHub Container Registry (ghcr.io) - amd64
+  - image_templates:
       - "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
+      - "{{ if not .Env.IS_PRERELEASE }}ghcr.io/kholisrag/do-firewall-allowlister:latest-amd64{{ end }}"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -89,26 +89,10 @@ dockers:
       - "--platform=linux/amd64"
     goarch: amd64
     goos: linux
-  # GitHub Container Registry (ghcr.io) - amd64 - Latest tags (only for stable releases)
-  - id: ghcr-amd64-latest
-    image_templates:
-      - "ghcr.io/kholisrag/do-firewall-allowlister:latest-amd64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/amd64"
-    goarch: amd64
-    goos: linux
-  # GitHub Container Registry (ghcr.io) - arm64 - Version tags
-  - id: ghcr-arm64-version
-    image_templates:
+  # GitHub Container Registry (ghcr.io) - arm64
+  - image_templates:
       - "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
+      - "{{ if not .Env.IS_PRERELEASE }}ghcr.io/kholisrag/do-firewall-allowlister:latest-arm64{{ end }}"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -121,26 +105,10 @@ dockers:
       - "--platform=linux/arm64"
     goarch: arm64
     goos: linux
-  # GitHub Container Registry (ghcr.io) - arm64 - Latest tags (only for stable releases)
-  - id: ghcr-arm64-latest
-    image_templates:
-      - "ghcr.io/kholisrag/do-firewall-allowlister:latest-arm64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/arm64"
-    goarch: arm64
-    goos: linux
-  # Docker Hub - amd64 - Version tags
-  - id: dockerhub-amd64-version
-    image_templates:
+  # Docker Hub - amd64
+  - image_templates:
       - "kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
+      - "{{ if not .Env.IS_PRERELEASE }}kholisrag/do-firewall-allowlister:latest-amd64{{ end }}"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -153,26 +121,10 @@ dockers:
       - "--platform=linux/amd64"
     goarch: amd64
     goos: linux
-  # Docker Hub - amd64 - Latest tags (only for stable releases)
-  - id: dockerhub-amd64-latest
-    image_templates:
-      - "kholisrag/do-firewall-allowlister:latest-amd64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/amd64"
-    goarch: amd64
-    goos: linux
-  # Docker Hub - arm64 - Version tags
-  - id: dockerhub-arm64-version
-    image_templates:
+  # Docker Hub - arm64
+  - image_templates:
       - "kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
+      - "{{ if not .Env.IS_PRERELEASE }}kholisrag/do-firewall-allowlister:latest-arm64{{ end }}"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -185,26 +137,10 @@ dockers:
       - "--platform=linux/arm64"
     goarch: arm64
     goos: linux
-  # Docker Hub - arm64 - Latest tags (only for stable releases)
-  - id: dockerhub-arm64-latest
-    image_templates:
-      - "kholisrag/do-firewall-allowlister:latest-arm64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/arm64"
-    goarch: arm64
-    goos: linux
-  # Quay.io - amd64 - Version tags
-  - id: quay-amd64-version
-    image_templates:
+  # Quay.io - amd64
+  - image_templates:
       - "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
+      - "{{ if not .Env.IS_PRERELEASE }}quay.io/kholisrag/do-firewall-allowlister:latest-amd64{{ end }}"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -217,42 +153,10 @@ dockers:
       - "--platform=linux/amd64"
     goarch: amd64
     goos: linux
-  # Quay.io - amd64 - Latest tags (only for stable releases)
-  - id: quay-amd64-latest
-    image_templates:
-      - "quay.io/kholisrag/do-firewall-allowlister:latest-amd64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/amd64"
-    goarch: amd64
-    goos: linux
-  # Quay.io - arm64 - Version tags
-  - id: quay-arm64-version
-    image_templates:
+  # Quay.io - arm64
+  - image_templates:
       - "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/arm64"
-    goarch: arm64
-    goos: linux
-  # Quay.io - arm64 - Latest tags (only for stable releases)
-  - id: quay-arm64-latest
-    image_templates:
-      - "quay.io/kholisrag/do-firewall-allowlister:latest-arm64"
+      - "{{ if not .Env.IS_PRERELEASE }}quay.io/kholisrag/do-firewall-allowlister:latest-arm64{{ end }}"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -274,30 +178,30 @@ docker_manifests:
       - "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
       - "ghcr.io/kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
   # GitHub Container Registry (ghcr.io) manifests - Latest tags (only for stable releases)
-  - name_template: "ghcr.io/kholisrag/do-firewall-allowlister:latest"
+  - name_template: "{{ if not .Env.IS_PRERELEASE }}ghcr.io/kholisrag/do-firewall-allowlister:latest{{ end }}"
     image_templates:
-      - "ghcr.io/kholisrag/do-firewall-allowlister:latest-amd64"
-      - "ghcr.io/kholisrag/do-firewall-allowlister:latest-arm64"
+      - "{{ if not .Env.IS_PRERELEASE }}ghcr.io/kholisrag/do-firewall-allowlister:latest-amd64{{ end }}"
+      - "{{ if not .Env.IS_PRERELEASE }}ghcr.io/kholisrag/do-firewall-allowlister:latest-arm64{{ end }}"
   # Docker Hub manifests - Version tags
   - name_template: "kholisrag/do-firewall-allowlister:{{ .Version }}"
     image_templates:
       - "kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
       - "kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
   # Docker Hub manifests - Latest tags (only for stable releases)
-  - name_template: "kholisrag/do-firewall-allowlister:latest"
+  - name_template: "{{ if not .Env.IS_PRERELEASE }}kholisrag/do-firewall-allowlister:latest{{ end }}"
     image_templates:
-      - "kholisrag/do-firewall-allowlister:latest-amd64"
-      - "kholisrag/do-firewall-allowlister:latest-arm64"
+      - "{{ if not .Env.IS_PRERELEASE }}kholisrag/do-firewall-allowlister:latest-amd64{{ end }}"
+      - "{{ if not .Env.IS_PRERELEASE }}kholisrag/do-firewall-allowlister:latest-arm64{{ end }}"
   # Quay.io manifests - Version tags
   - name_template: "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}"
     image_templates:
       - "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}-amd64"
       - "quay.io/kholisrag/do-firewall-allowlister:{{ .Version }}-arm64"
   # Quay.io manifests - Latest tags (only for stable releases)
-  - name_template: "quay.io/kholisrag/do-firewall-allowlister:latest"
+  - name_template: "{{ if not .Env.IS_PRERELEASE }}quay.io/kholisrag/do-firewall-allowlister:latest{{ end }}"
     image_templates:
-      - "quay.io/kholisrag/do-firewall-allowlister:latest-amd64"
-      - "quay.io/kholisrag/do-firewall-allowlister:latest-arm64"
+      - "{{ if not .Env.IS_PRERELEASE }}quay.io/kholisrag/do-firewall-allowlister:latest-amd64{{ end }}"
+      - "{{ if not .Env.IS_PRERELEASE }}quay.io/kholisrag/do-firewall-allowlister:latest-arm64{{ end }}"
 
 # Changelog configuration
 changelog:
