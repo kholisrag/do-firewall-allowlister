@@ -258,6 +258,10 @@ release:
   # Set prerelease based on environment variable
   prerelease: auto
   mode: replace
+  # Skip release if it already exists
+  skip_upload: auto
+  # Replace existing assets
+  replace_existing_draft: true
   header: |
     ## Release {{ .Tag }}
 
