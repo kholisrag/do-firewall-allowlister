@@ -8,6 +8,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// BuildInfo holds build-time information
+type BuildInfo struct {
+	Version string
+	Commit  string
+	Date    string
+}
+
 // VersionInfo holds version information
 type VersionInfo struct {
 	Version   string `json:"version"`
@@ -19,7 +26,7 @@ type VersionInfo struct {
 }
 
 // NewVersionCommand creates and returns the version command
-func NewVersionCommand() *cobra.Command {
+func NewVersionCommand(buildInfo BuildInfo) *cobra.Command {
 	var versionOutput string
 
 	versionCmd := &cobra.Command{
@@ -27,7 +34,7 @@ func NewVersionCommand() *cobra.Command {
 		Short: "Print version information",
 		Long:  "Print detailed version information including build details",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runVersion(versionOutput)
+			return runVersion(versionOutput, buildInfo)
 		},
 	}
 
@@ -35,12 +42,12 @@ func NewVersionCommand() *cobra.Command {
 	return versionCmd
 }
 
-func runVersion(output string) error {
+func runVersion(output string, buildInfo BuildInfo) error {
 	versionInfo := VersionInfo{
-		Version:   "dev", // Will be set by build process
-		Commit:    "none",
-		Date:      "unknown",
-		BuiltBy:   "unknown",
+		Version:   buildInfo.Version,
+		Commit:    buildInfo.Commit,
+		Date:      buildInfo.Date,
+		BuiltBy:   "goreleaser",
 		GoVersion: runtime.Version(),
 		Platform:  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
 	}

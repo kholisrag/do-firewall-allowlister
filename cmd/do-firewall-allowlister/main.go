@@ -10,11 +10,20 @@ import (
 // Build information set by GoReleaser
 var (
 	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
 
 func main() {
+	// Create build information
+	buildInfo := commands.BuildInfo{
+		Version: version,
+		Commit:  commit,
+		Date:    date,
+	}
+
 	// Create and execute root command with build information
-	rootCmd := commands.NewRootCommand()
+	rootCmd := commands.NewRootCommand(buildInfo)
 	rootCmd.Version = version
 
 	if err := rootCmd.Execute(); err != nil {

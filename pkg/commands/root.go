@@ -5,7 +5,7 @@ import (
 )
 
 // NewRootCommand creates and returns the root cobra command
-func NewRootCommand() *cobra.Command {
+func NewRootCommand(buildInfo BuildInfo) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "do-firewall-allowlister",
 		Short: "DigitalOcean Firewall Allowlister manages firewall rules for Cloudflare and Netdata IPs",
@@ -29,7 +29,7 @@ The service can run as a daemon with scheduled updates or as a one-shot command.
 	rootCmd.AddCommand(NewDaemonCommand())
 	rootCmd.AddCommand(NewOneshotCommand())
 	rootCmd.AddCommand(NewValidateCommand())
-	rootCmd.AddCommand(NewVersionCommand())
+	rootCmd.AddCommand(NewVersionCommand(buildInfo))
 
 	return rootCmd
 }

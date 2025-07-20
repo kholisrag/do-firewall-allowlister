@@ -5,6 +5,10 @@ description: "Code Rules"
 
 # Rules
 
+# Build
+
+1. Utilize goreleaser and or taskfile to check and crosscheck, like build, test, etc.
+
 # Golang Library Rules
 
 1. use https://github.com/golang-standards/project-layout for project directory and naming standard
