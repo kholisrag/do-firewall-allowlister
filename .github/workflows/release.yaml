@@ -181,17 +181,37 @@ jobs:
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_TOKEN }}
 
-      # Create and push tag for releases
+      # Create and push tag for releases (only when not triggered by an existing tag)
       - name: Create and push tag
-        if: needs.version.outputs.is_prerelease == 'true' && !startsWith(github.ref, 'refs/tags/')
+        if: needs.version.outputs.should_release == 'true' && !startsWith(github.ref, 'refs/tags/')
         run: |
           VERSION_TAG="${{ needs.version.outputs.version_tag }}"
-          if [[ "${{ needs.version.outputs.is_prerelease }}" == "true" ]]; then
-            # Add pre-release suffix with timestamp
+
+          echo "Debug info:"
+          echo "  Original version_tag: $VERSION_TAG"
+          echo "  is_prerelease: ${{ needs.version.outputs.is_prerelease }}"
+          echo "  version_override: ${{ github.event.inputs.version_override }}"
+          echo "  Current commit: $(git rev-parse HEAD)"
+
+          # For pre-releases, add timestamp suffix (unless version_override is used)
+          if [[ "${{ needs.version.outputs.is_prerelease }}" == "true" && "${{ github.event.inputs.version_override }}" == "" ]]; then
             TIMESTAMP=$(date +%Y%m%d%H%M%S)
             VERSION_TAG="${VERSION_TAG}-pre.${TIMESTAMP}"
+            echo "  Modified version_tag for pre-release: $VERSION_TAG"
           fi
-          git tag $VERSION_TAG
+
+          echo "Creating and pushing tag: $VERSION_TAG"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Delete tag if it already exists (force update)
+          if git tag -l | grep -q "^${VERSION_TAG}$"; then
+            echo "Tag $VERSION_TAG already exists, deleting it first"
+            git tag -d $VERSION_TAG || true
+            git push origin :refs/tags/$VERSION_TAG || true
+          fi
+
+          git tag -a $VERSION_TAG -m "Release $VERSION_TAG"
           git push origin $VERSION_TAG
           echo "RELEASE_TAG=$VERSION_TAG" >> $GITHUB_ENV
 
@@ -223,6 +243,46 @@ jobs:
 
           echo "✓ Version validation passed: $VERSION_TAG"
           echo "✓ All release validations passed"
+
+      # Verify tag exists and points to current commit
+      - name: Verify tag
+        run: |
+          RELEASE_TAG="${{ env.RELEASE_TAG || needs.version.outputs.version_tag }}"
+          echo "Verifying tag: $RELEASE_TAG"
+
+          # Check if tag exists
+          if ! git tag -l | grep -q "^${RELEASE_TAG}$"; then
+            echo "❌ Tag $RELEASE_TAG does not exist"
+            exit 1
+          fi
+
+          # Check if tag points to current commit
+          TAG_COMMIT=$(git rev-list -n 1 $RELEASE_TAG)
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+
+          echo "Tag commit: $TAG_COMMIT"
+          echo "Current commit: $CURRENT_COMMIT"
+
+          if [[ "$TAG_COMMIT" != "$CURRENT_COMMIT" ]]; then
+            echo "❌ Tag $RELEASE_TAG does not point to current commit"
+            echo "Moving tag to current commit..."
+            git tag -f -a $RELEASE_TAG -m "Release $RELEASE_TAG"
+            git push -f origin $RELEASE_TAG
+          else
+            echo "✓ Tag $RELEASE_TAG points to current commit"
+          fi
+
+      # Debug GoReleaser environment
+      - name: Debug GoReleaser environment
+        run: |
+          echo "GoReleaser environment:"
+          echo "  GORELEASER_CURRENT_TAG: ${{ env.RELEASE_TAG || needs.version.outputs.version_tag }}"
+          echo "  IS_PRERELEASE: ${{ needs.version.outputs.is_prerelease }}"
+          echo "  Current commit: $(git rev-parse HEAD)"
+          echo "  Available tags:"
+          git tag -l | head -10
+          echo "  Git status:"
+          git status --porcelain
 
       # Run GoReleaser to build and publish multi-platform Docker images to all registries
       - name: Run GoReleaser
