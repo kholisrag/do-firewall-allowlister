@@ -223,23 +223,6 @@ jobs:
           echo "✓ Version validation passed: $VERSION_TAG"
           echo "✓ All release validations passed"
 
-      # Generate CHANGELOG.md using GoReleaser
-      - name: Generate CHANGELOG.md
-        run: |
-          # Use goreleaser to generate changelog and save to file
-          goreleaser changelog --output CHANGELOG.md || echo "# Changelog\n\nChangelog will be generated on first release." > CHANGELOG.md
-
-          # Commit and push CHANGELOG.md if it changed
-          if git diff --quiet CHANGELOG.md; then
-            echo "CHANGELOG.md unchanged"
-          else
-            git config --local user.email "action@github.com"
-            git config --local user.name "GitHub Action"
-            git add CHANGELOG.md
-            git commit -m "chore: update CHANGELOG.md for ${{ env.RELEASE_TAG }}"
-            git push origin HEAD:main || echo "Failed to push CHANGELOG.md update"
-          fi
-
       # Run GoReleaser to build and publish multi-platform Docker images to all registries
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6

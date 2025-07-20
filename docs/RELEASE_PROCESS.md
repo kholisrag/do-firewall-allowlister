@@ -75,7 +75,7 @@ git commit -m "docs: update installation instructions"
   - Creates a pre-release tag
   - Builds and publishes Docker images
   - Creates GitHub release marked as pre-release
-  - Updates CHANGELOG.md
+  - Generates changelog in GitHub release
 
 ### Full Releases (Manual)
 
@@ -86,7 +86,7 @@ git commit -m "docs: update installation instructions"
   - Creates a stable release tag
   - Builds and publishes Docker images with `latest` tag
   - Creates GitHub release marked as stable
-  - Updates CHANGELOG.md
+  - Generates changelog in GitHub release
 
 ## How to Create Releases
 
@@ -152,7 +152,7 @@ Multi-architecture Docker images are automatically built and published to:
 
 ## Changelog
 
-The `CHANGELOG.md` file is automatically generated and categorized:
+The changelog is automatically generated in GitHub releases and categorized:
 
 - 🚀 **Features**: New functionality
 - 🐛 **Bug Fixes**: Bug fixes
