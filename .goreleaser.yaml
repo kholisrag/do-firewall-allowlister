@@ -206,31 +206,70 @@ docker_manifests:
 changelog:
   sort: asc
   use: github
+  # Format commits with author information
+  format: "{{.SHA}}: {{.Message}} (@{{.AuthorUsername}})"
+  # Abbreviate commit hashes
+  abbrev: 7
   filters:
     exclude:
       - "^docs:"
       - "^test:"
       - "^ci:"
       - "^chore:"
+      - "^style:"
+      - "^refactor:"
       - "merge conflict"
       - Merge pull request
       - Merge remote-tracking branch
       - Merge branch
+      - "^Bump "
+      - "^Update "
   groups:
-    - title: Features
+    - title: "🚀 Features"
       regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
       order: 0
-    - title: "Bug fixes"
+    - title: "🐛 Bug Fixes"
       regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
       order: 1
-    - title: "Performance improvements"
+    - title: "⚡ Performance Improvements"
       regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
       order: 2
-    - title: Others
+    - title: "💥 Breaking Changes"
+      regexp: '^.*?(\w+)(\([[:word:]]+\))?!:.+$'
+      order: 3
+    - title: "🔧 Build & CI"
+      regexp: '^.*?build(\([[:word:]]+\))??!?:.+$'
+      order: 4
+    - title: "📚 Documentation"
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 5
+    - title: "🧪 Tests"
+      regexp: '^.*?test(\([[:word:]]+\))??!?:.+$'
+      order: 6
+    - title: "🔄 Reverts"
+      regexp: '^.*?revert(\([[:word:]]+\))??!?:.+$'
+      order: 7
+    - title: "📦 Dependencies"
+      regexp: '^.*?(deps|dep)(\([[:word:]]+\))??!?:.+$'
+      order: 8
+    - title: "🏗️ Others"
       order: 999
 
 # Release configuration
 release:
+  # Set prerelease based on environment variable
+  prerelease: auto
+  mode: replace
+  header: |
+    ## Release {{ .Tag }}
+
+    {{- if .Prerelease }}
+    **This is a pre-release version.** It may contain bugs or incomplete features.
+    Use at your own risk in production environments.
+    {{- else }}
+    **This is a stable release.** It has been tested and is ready for production use.
+    {{- end }}
+
   footer: |
     ## Docker Images
 

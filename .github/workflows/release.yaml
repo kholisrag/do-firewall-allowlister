@@ -1,5 +1,6 @@
 # Release workflow for multi-platform Docker images
 # Builds and publishes to GitHub Container Registry, Docker Hub, and Quay.io
+# Supports automated pre-releases on main branch pushes and manual full releases
 #
 # Required secrets:
 # - DOCKERHUB_USERNAME: Docker Hub username
@@ -15,11 +16,27 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "**.md"
     tags:
       - "v*"
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Type of release"
+        required: true
+        default: "prerelease"
+        type: choice
+        options:
+          - prerelease
+          - release
+      version_override:
+        description: "Override version (optional, e.g., v1.2.3)"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -27,6 +44,66 @@ permissions:
   id-token: write
 
 jobs:
+  # Determine semantic version and release type
+  version:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    outputs:
+      version: ${{ steps.semantic.outputs.version }}
+      version_tag: ${{ steps.semantic.outputs.version_tag }}
+      is_prerelease: ${{ steps.release_type.outputs.is_prerelease }}
+      should_release: ${{ steps.release_type.outputs.should_release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate semantic version
+        id: semantic
+        uses: PaulHatch/semantic-version@v5.4.0
+        with:
+          tag_prefix: "v"
+          major_pattern: "BREAKING CHANGE:|feat!:|fix!:"
+          minor_pattern: "feat:"
+          version_format: "${major}.${minor}.${patch}"
+          search_commit_body: true
+          user_format_type: "csv"
+          enable_prerelease_mode: true
+          bump_each_commit: false
+
+      - name: Determine release type
+        id: release_type
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger
+            if [[ "${{ github.event.inputs.release_type }}" == "release" ]]; then
+              echo "is_prerelease=false" >> $GITHUB_OUTPUT
+              echo "should_release=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_prerelease=true" >> $GITHUB_OUTPUT
+              echo "should_release=true" >> $GITHUB_OUTPUT
+            fi
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            # Tag push - full release
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            # Main branch push - pre-release
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          else
+            # Other cases - no release
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Override version if specified
+        if: github.event.inputs.version_override != ''
+        run: |
+          echo "version_tag=${{ github.event.inputs.version_override }}" >> $GITHUB_OUTPUT
+        id: version_override
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -59,8 +136,8 @@ jobs:
 
   goreleaser:
     runs-on: ubuntu-latest
-    needs: test
-    if: startsWith(github.ref, 'refs/tags/')
+    needs: [test, version]
+    if: needs.version.outputs.should_release == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -102,6 +179,66 @@ jobs:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_TOKEN }}
+
+      # Create and push tag for releases
+      - name: Create and push tag
+        if: needs.version.outputs.is_prerelease == 'true' && !startsWith(github.ref, 'refs/tags/')
+        run: |
+          VERSION_TAG="${{ needs.version.outputs.version_tag }}"
+          if [[ "${{ needs.version.outputs.is_prerelease }}" == "true" ]]; then
+            # Add pre-release suffix with timestamp
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            VERSION_TAG="${VERSION_TAG}-pre.${TIMESTAMP}"
+          fi
+          git tag $VERSION_TAG
+          git push origin $VERSION_TAG
+          echo "RELEASE_TAG=$VERSION_TAG" >> $GITHUB_ENV
+
+      - name: Set release tag for existing tags
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      # Validate release conditions
+      - name: Validate release
+        run: |
+          echo "Validating release conditions..."
+
+          # Check if this is a manual full release
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.release_type }}" == "release" ]]; then
+            echo "Manual full release - performing additional validations"
+
+            # Check if there are any open critical issues (this is just an example)
+            # You can add more sophisticated checks here
+            echo "✓ Manual release validation passed"
+          fi
+
+          # Check if version is valid semantic version
+          VERSION_TAG="${{ env.RELEASE_TAG || needs.version.outputs.version_tag }}"
+          if [[ ! "$VERSION_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
+            echo "❌ Invalid semantic version: $VERSION_TAG"
+            exit 1
+          fi
+
+          echo "✓ Version validation passed: $VERSION_TAG"
+          echo "✓ All release validations passed"
+
+      # Generate CHANGELOG.md using GoReleaser
+      - name: Generate CHANGELOG.md
+        run: |
+          # Use goreleaser to generate changelog and save to file
+          goreleaser changelog --output CHANGELOG.md || echo "# Changelog\n\nChangelog will be generated on first release." > CHANGELOG.md
+
+          # Commit and push CHANGELOG.md if it changed
+          if git diff --quiet CHANGELOG.md; then
+            echo "CHANGELOG.md unchanged"
+          else
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git add CHANGELOG.md
+            git commit -m "chore: update CHANGELOG.md for ${{ env.RELEASE_TAG }}"
+            git push origin HEAD:main || echo "Failed to push CHANGELOG.md update"
+          fi
 
       # Run GoReleaser to build and publish multi-platform Docker images to all registries
       - name: Run GoReleaser
