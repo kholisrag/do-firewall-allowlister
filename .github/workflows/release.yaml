@@ -49,8 +49,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     outputs:
-      version: ${{ steps.semantic.outputs.version }}
-      version_tag: ${{ steps.semantic.outputs.version_tag }}
+      version: ${{ steps.version_override.outputs.version || steps.semantic.outputs.version }}
+      version_tag: ${{ steps.version_override.outputs.version_tag || steps.semantic.outputs.version_tag }}
       is_prerelease: ${{ steps.release_type.outputs.is_prerelease }}
       should_release: ${{ steps.release_type.outputs.should_release }}
     steps:
@@ -102,6 +102,7 @@ jobs:
         if: github.event.inputs.version_override != ''
         run: |
           echo "version_tag=${{ github.event.inputs.version_override }}" >> $GITHUB_OUTPUT
+          echo "version=${{ github.event.inputs.version_override }}" >> $GITHUB_OUTPUT
         id: version_override
 
   test:
@@ -232,3 +233,5 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ env.RELEASE_TAG || needs.version.outputs.version_tag }}
+          IS_PRERELEASE: ${{ needs.version.outputs.is_prerelease }}
