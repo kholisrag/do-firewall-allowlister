@@ -28,7 +28,6 @@ func NewScheduler(timezone string, logger *zap.Logger) (*Scheduler, error) {
 
 	c := cron.New(
 		cron.WithLocation(loc),
-		cron.WithSeconds(), // Enable seconds precision
 		cron.WithLogger(cron.DefaultLogger),
 	)
 
@@ -142,7 +141,7 @@ func (s *Scheduler) IsRunning() bool {
 
 // ValidateSchedule validates a cron schedule expression
 func ValidateSchedule(schedule string) error {
-	parser := cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
 	_, err := parser.Parse(schedule)
 	if err != nil {
 		return fmt.Errorf("invalid cron schedule %s: %w", schedule, err)
@@ -157,7 +156,7 @@ func GetNextRunTime(schedule string, timezone string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("invalid timezone %s: %w", timezone, err)
 	}
 
-	parser := cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
 	sched, err := parser.Parse(schedule)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("invalid cron schedule %s: %w", schedule, err)

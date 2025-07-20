@@ -24,8 +24,14 @@ tasks:
     cmds:
       - rm -rf {{.BUILD_DIR}}
       - rm -f {{.BINARY_NAME}}
-      - go clean -cache
+      - go clean
       - docker system prune -f --filter label=stage=builder 2>/dev/null || true
+
+  clean:cache:
+    desc: Clean build artifacts and Go cache
+    cmds:
+      - task: clean
+      - go clean -cache
 
   deps:
     desc: Download and tidy dependencies
@@ -68,46 +74,28 @@ tasks:
       - echo "Coverage report generated{{":"}} coverage.html"
 
   build:
-    desc: Build binary for current platform
+    desc: Build binary for current platform using GoReleaser
     deps: [deps]
     cmds:
-      - mkdir -p {{.BUILD_DIR}}
-      - go build -ldflags="-s -w -X main.version={{.VERSION}}" -o {{.BUILD_DIR}}/{{.BINARY_NAME}} {{.MAIN_PATH}}
+      - goreleaser build --single-target --snapshot --clean
 
   build:all:
-    desc: Build binaries for all platforms
+    desc: Build binaries for all platforms using GoReleaser
     deps: [clean, deps]
     cmds:
-      - task: build:linux
-      - task: build:darwin
-      - task: build:windows
+      - goreleaser build --snapshot --clean
 
   build:linux:
-    desc: Build Linux binary
-    env:
-      GOOS: linux
-      GOARCH: amd64
-    cmds:
-      - mkdir -p {{.BUILD_DIR}}/linux_amd64
-      - go build -ldflags="-s -w -X main.version={{.VERSION}}" -o {{.BUILD_DIR}}/linux_amd64/{{.BINARY_NAME}} {{.MAIN_PATH}}
+    desc: Build all binaries (includes Linux) using GoReleaser
+    deps: [build:all]
 
   build:darwin:
-    desc: Build macOS binary
-    env:
-      GOOS: darwin
-      GOARCH: amd64
-    cmds:
-      - mkdir -p {{.BUILD_DIR}}/darwin_amd64
-      - go build -ldflags="-s -w -X main.version={{.VERSION}}" -o {{.BUILD_DIR}}/darwin_amd64/{{.BINARY_NAME}} {{.MAIN_PATH}}
+    desc: Build all binaries (includes macOS) using GoReleaser
+    deps: [build:all]
 
   build:windows:
-    desc: Build Windows binary
-    env:
-      GOOS: windows
-      GOARCH: amd64
-    cmds:
-      - mkdir -p {{.BUILD_DIR}}/windows_amd64
-      - go build -ldflags="-s -w -X main.version={{.VERSION}}" -o {{.BUILD_DIR}}/windows_amd64/{{.BINARY_NAME}}.exe {{.MAIN_PATH}}
+    desc: Build all binaries (includes Windows) using GoReleaser
+    deps: [build:all]
 
   docker:build:
     desc: Build Docker image
@@ -141,7 +129,14 @@ tasks:
     desc: Run in development mode
     deps: [build]
     cmds:
-      - ./{{.BUILD_DIR}}/{{.BINARY_NAME}} --help
+      - |
+        BINARY_PATH=$(find {{.BUILD_DIR}} -name "{{.BINARY_NAME}}" -type f | head -1)
+        if [ -n "$BINARY_PATH" ]; then
+          "$BINARY_PATH" --help
+        else
+          echo "Binary not found in {{.BUILD_DIR}}"
+          exit 1
+        fi
 
   install:
     desc: Install binary to GOPATH/bin
@@ -153,7 +148,14 @@ tasks:
     desc: Validate configuration
     deps: [build]
     cmds:
-      - ./{{.BUILD_DIR}}/{{.BINARY_NAME}} validate --config config.yaml
+      - |
+        BINARY_PATH=$(find {{.BUILD_DIR}} -name "{{.BINARY_NAME}}" -type f | head -1)
+        if [ -n "$BINARY_PATH" ]; then
+          "$BINARY_PATH" validate --config config.yaml
+        else
+          echo "Binary not found in {{.BUILD_DIR}}"
+          exit 1
+        fi
 
   check:
     desc: Run all checks (format, lint, test)

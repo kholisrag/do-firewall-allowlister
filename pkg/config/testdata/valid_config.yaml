@@ -1,7 +1,7 @@
-log-level: DEBUG
+log-level: ERROR
 
 cron:
-  schedule: "0 0 * * *"
+  schedule: "0 0 * * *" # Standard cron format: minute hour day month weekday
   timezone: "UTC"
 
 digitalocean:
@@ -15,8 +15,7 @@ digitalocean:
 
 netdata:
   domains:
-    - "app.netdata.cloud"
-    - "api.netdata.cloud"
+    - "example.com" # Use a test domain that resolves
 
 cloudflare:
   ips-url: "https://api.cloudflare.com/client/v4/ips"

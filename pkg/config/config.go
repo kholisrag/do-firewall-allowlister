@@ -59,7 +59,7 @@ func Load(configFile string, flags *pflag.FlagSet) (*Config, error) {
 
 	// Load defaults first (lowest priority)
 	_ = loader.Set("log-level", "INFO")
-	_ = loader.Set("cron.schedule", "0 0 * * *")
+	_ = loader.Set("cron.schedule", "0 0 * * *") // Standard 5-field format: minute hour day month weekday
 	_ = loader.Set("cron.timezone", "UTC")
 	_ = loader.Set("cloudflare.ips-url", "https://api.cloudflare.com/client/v4/ips")
 
@@ -193,7 +193,7 @@ func validate(config *Config) error {
 // SetDefaults sets default values for configuration
 func SetDefaults() {
 	_ = k.Set("log-level", "INFO")
-	_ = k.Set("cron.schedule", "0 0 * * *")
+	_ = k.Set("cron.schedule", "0 0 * * *") // Standard 5-field format: minute hour day month weekday
 	_ = k.Set("cron.timezone", "UTC")
 	_ = k.Set("cloudflare.ips-url", "https://api.cloudflare.com/client/v4/ips")
 }

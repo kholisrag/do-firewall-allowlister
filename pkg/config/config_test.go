@@ -21,8 +21,8 @@ func TestLoad(t *testing.T) {
 			name:       "valid config file",
 			configFile: "testdata/valid_config.yaml",
 			validate: func(cfg *Config) error {
-				if cfg.LogLevel != "DEBUG" {
-					t.Errorf("expected LogLevel DEBUG, got %s", cfg.LogLevel)
+				if cfg.LogLevel != "ERROR" {
+					t.Errorf("expected LogLevel ERROR, got %s", cfg.LogLevel)
 				}
 				if cfg.Cron.Schedule != "0 0 * * *" {
 					t.Errorf("expected cron schedule '0 0 * * *', got %s", cfg.Cron.Schedule)
