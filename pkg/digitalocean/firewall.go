@@ -171,3 +171,95 @@ func (c *Client) ListFirewalls(ctx context.Context) ([]godo.Firewall, error) {
 	c.logger.Debug("Successfully listed firewalls", zap.Int("count", len(allFirewalls)))
 	return allFirewalls, nil
 }
+
+// AddSSHRule adds an SSH rule for a specific IP address to the firewall
+func (c *Client) AddSSHRule(ctx context.Context, firewallID string, sourceIP string, port int) error {
+	c.logger.Info("Adding SSH rule to firewall",
+		zap.String("firewall_id", firewallID),
+		zap.String("source_ip", sourceIP),
+		zap.Int("port", port))
+
+	// Get current firewall configuration
+	firewall, err := c.GetFirewall(ctx, firewallID)
+	if err != nil {
+		return fmt.Errorf("failed to get current firewall: %w", err)
+	}
+
+	// Validate and normalize the source IP
+	validSources, err := c.validateAndNormalizeSources([]string{sourceIP})
+	if err != nil {
+		c.logger.Error("Failed to validate source IP", zap.Error(err))
+		return fmt.Errorf("failed to validate source IP: %w", err)
+	}
+
+	// Create the new SSH rule
+	sshRule := godo.InboundRule{
+		Protocol:  "tcp",
+		PortRange: fmt.Sprintf("%d", port),
+		Sources: &godo.Sources{
+			Addresses: validSources,
+		},
+	}
+
+	// Check if a similar rule already exists
+	ruleExists := false
+	for _, existingRule := range firewall.InboundRules {
+		if existingRule.Protocol == "tcp" &&
+			existingRule.PortRange == fmt.Sprintf("%d", port) &&
+			existingRule.Sources != nil {
+			// Check if the IP is already in the sources
+			for _, addr := range existingRule.Sources.Addresses {
+				if addr == validSources[0] {
+					ruleExists = true
+					c.logger.Info("SSH rule already exists for this IP",
+						zap.String("source_ip", sourceIP),
+						zap.Int("port", port))
+					break
+				}
+			}
+		}
+		if ruleExists {
+			break
+		}
+	}
+
+	if ruleExists {
+		return nil // Rule already exists, nothing to do
+	}
+
+	// Add the new SSH rule to existing rules
+	newInboundRules := append(firewall.InboundRules, sshRule)
+
+	// Log droplets that will be preserved
+	if len(firewall.DropletIDs) > 0 {
+		c.logger.Debug("Preserving droplet attachments during SSH rule addition",
+			zap.String("firewall_id", firewallID),
+			zap.Ints("droplet_ids", firewall.DropletIDs))
+	}
+
+	// Update the firewall
+	updateRequest := &godo.FirewallRequest{
+		Name:          firewall.Name,
+		InboundRules:  newInboundRules,
+		OutboundRules: firewall.OutboundRules,
+		Tags:          firewall.Tags,
+		DropletIDs:    firewall.DropletIDs, // Preserve existing droplet attachments
+	}
+
+	_, _, err = c.client.Firewalls.Update(ctx, firewallID, updateRequest)
+	if err != nil {
+		c.logger.Error("Failed to update firewall with SSH rule",
+			zap.String("firewall_id", firewallID),
+			zap.Error(err))
+		return fmt.Errorf("failed to update firewall %s with SSH rule: %w", firewallID, err)
+	}
+
+	c.logger.Info("Successfully added SSH rule to firewall",
+		zap.String("firewall_id", firewallID),
+		zap.String("source_ip", sourceIP),
+		zap.Int("port", port),
+		zap.Int("total_inbound_rules", len(newInboundRules)),
+		zap.Int("preserved_droplets", len(firewall.DropletIDs)))
+
+	return nil
+}

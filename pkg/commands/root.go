@@ -28,6 +28,7 @@ The service can run as a daemon with scheduled updates or as a one-shot command.
 	// Add subcommands
 	rootCmd.AddCommand(NewDaemonCommand())
 	rootCmd.AddCommand(NewOneshotCommand())
+	rootCmd.AddCommand(NewAllowCurrentIPCommand())
 	rootCmd.AddCommand(NewValidateCommand())
 	rootCmd.AddCommand(NewVersionCommand(buildInfo))
 
