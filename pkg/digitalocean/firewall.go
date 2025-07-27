@@ -173,11 +173,14 @@ func (c *Client) ListFirewalls(ctx context.Context) ([]godo.Firewall, error) {
 }
 
 // AddSSHRule adds an SSH rule for a specific IP address to the firewall
-func (c *Client) AddSSHRule(ctx context.Context, firewallID string, sourceIP string, port int) error {
+// If replaceExisting is true, it removes all existing SSH rules for the port and replaces with the new IP
+// If replaceExisting is false, it appends the IP to existing SSH rules for the port
+func (c *Client) AddSSHRule(ctx context.Context, firewallID string, sourceIP string, port int, replaceExisting bool) error {
 	c.logger.Info("Adding SSH rule to firewall",
 		zap.String("firewall_id", firewallID),
 		zap.String("source_ip", sourceIP),
-		zap.Int("port", port))
+		zap.Int("port", port),
+		zap.Bool("replace_existing", replaceExisting))
 
 	// Get current firewall configuration
 	firewall, err := c.GetFirewall(ctx, firewallID)
@@ -192,25 +195,26 @@ func (c *Client) AddSSHRule(ctx context.Context, firewallID string, sourceIP str
 		return fmt.Errorf("failed to validate source IP: %w", err)
 	}
 
-	// Create the new SSH rule
-	sshRule := godo.InboundRule{
-		Protocol:  "tcp",
-		PortRange: fmt.Sprintf("%d", port),
-		Sources: &godo.Sources{
-			Addresses: validSources,
-		},
+	var newInboundRules []godo.InboundRule
+	var existingSSHRule *godo.InboundRule
+	var existingSSHRuleIndex int = -1
+
+	// Find existing SSH rule for this port
+	for i, existingRule := range firewall.InboundRules {
+		if existingRule.Protocol == "tcp" && existingRule.PortRange == fmt.Sprintf("%d", port) {
+			existingSSHRule = &existingRule
+			existingSSHRuleIndex = i
+			break
+		}
 	}
 
-	// Check if a similar rule already exists
-	ruleExists := false
-	for _, existingRule := range firewall.InboundRules {
-		if existingRule.Protocol == "tcp" &&
-			existingRule.PortRange == fmt.Sprintf("%d", port) &&
-			existingRule.Sources != nil {
-			// Check if the IP is already in the sources
-			for _, addr := range existingRule.Sources.Addresses {
+	if existingSSHRule != nil {
+		// Check if IP already exists in the rule
+		ipAlreadyExists := false
+		if existingSSHRule.Sources != nil {
+			for _, addr := range existingSSHRule.Sources.Addresses {
 				if addr == validSources[0] {
-					ruleExists = true
+					ipAlreadyExists = true
 					c.logger.Info("SSH rule already exists for this IP",
 						zap.String("source_ip", sourceIP),
 						zap.Int("port", port))
@@ -218,17 +222,66 @@ func (c *Client) AddSSHRule(ctx context.Context, firewallID string, sourceIP str
 				}
 			}
 		}
-		if ruleExists {
-			break
+
+		if ipAlreadyExists && !replaceExisting {
+			return nil // IP already exists and we're not replacing, nothing to do
 		}
-	}
 
-	if ruleExists {
-		return nil // Rule already exists, nothing to do
-	}
+		// Copy all rules except the existing SSH rule
+		for i, rule := range firewall.InboundRules {
+			if i != existingSSHRuleIndex {
+				newInboundRules = append(newInboundRules, rule)
+			}
+		}
 
-	// Add the new SSH rule to existing rules
-	newInboundRules := append(firewall.InboundRules, sshRule)
+		// Create updated SSH rule
+		var updatedAddresses []string
+		if replaceExisting {
+			// Replace mode: only use the new IP
+			updatedAddresses = validSources
+			c.logger.Info("Replacing existing SSH rule with current IP",
+				zap.String("source_ip", sourceIP),
+				zap.Int("port", port))
+		} else {
+			// Append mode: merge with existing IPs
+			if existingSSHRule.Sources != nil {
+				updatedAddresses = append(updatedAddresses, existingSSHRule.Sources.Addresses...)
+			}
+			if !ipAlreadyExists {
+				updatedAddresses = append(updatedAddresses, validSources...)
+				c.logger.Info("Appending IP to existing SSH rule",
+					zap.String("source_ip", sourceIP),
+					zap.Int("port", port),
+					zap.Int("total_ips", len(updatedAddresses)))
+			}
+		}
+
+		// Create the updated SSH rule
+		updatedSSHRule := godo.InboundRule{
+			Protocol:  "tcp",
+			PortRange: fmt.Sprintf("%d", port),
+			Sources: &godo.Sources{
+				Addresses: updatedAddresses,
+			},
+		}
+		newInboundRules = append(newInboundRules, updatedSSHRule)
+	} else {
+		// No existing SSH rule for this port, create a new one
+		newInboundRules = append(newInboundRules, firewall.InboundRules...)
+
+		sshRule := godo.InboundRule{
+			Protocol:  "tcp",
+			PortRange: fmt.Sprintf("%d", port),
+			Sources: &godo.Sources{
+				Addresses: validSources,
+			},
+		}
+		newInboundRules = append(newInboundRules, sshRule)
+
+		c.logger.Info("Creating new SSH rule",
+			zap.String("source_ip", sourceIP),
+			zap.Int("port", port))
+	}
 
 	// Log droplets that will be preserved
 	if len(firewall.DropletIDs) > 0 {

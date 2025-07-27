@@ -15,8 +15,9 @@ import (
 // NewAllowCurrentIPCommand creates and returns the allow-current-ip command
 func NewAllowCurrentIPCommand() *cobra.Command {
 	var (
-		dryRun bool
-		port   int
+		dryRun         bool
+		port           int
+		removeExisting bool
 	)
 
 	allowCurrentIPCmd := &cobra.Command{
@@ -26,14 +27,18 @@ func NewAllowCurrentIPCommand() *cobra.Command {
 
 This command will:
 - Detect your current public IP address using icanhazip.com
-- Add it as an SSH rule to the firewall specified in config.yaml
+- Add it to existing SSH rules for the specified port (append mode by default)
 - Preserve existing firewall rules and droplet attachments
 - Default to port 22 (SSH) but can be customized with --port flag
+
+Modes:
+- Default (append): Adds current IP to existing SSH rules for the port
+- --remove flag: Removes all existing SSH rules for the port and replaces with current IP only
 
 This is useful for quickly allowing SSH access from your current location without
 manually managing firewall rules in the DigitalOcean control panel.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAllowCurrentIP(cmd, args, dryRun, port)
+			return runAllowCurrentIP(cmd, args, dryRun, port, removeExisting)
 		},
 	}
 
@@ -42,11 +47,13 @@ manually managing firewall rules in the DigitalOcean control panel.`,
 		"Show what would be done without making actual changes")
 	allowCurrentIPCmd.Flags().IntVar(&port, "port", 22,
 		"Port number for SSH access (default: 22)")
+	allowCurrentIPCmd.Flags().BoolVar(&removeExisting, "remove", false,
+		"Remove existing SSH rules for this port and replace with current IP only")
 
 	return allowCurrentIPCmd
 }
 
-func runAllowCurrentIP(cmd *cobra.Command, args []string, dryRun bool, port int) error {
+func runAllowCurrentIP(cmd *cobra.Command, args []string, dryRun bool, port int, removeExisting bool) error {
 	// Get config file from global flag
 	configFile, _ := cmd.Flags().GetString("config")
 
@@ -70,7 +77,8 @@ func runAllowCurrentIP(cmd *cobra.Command, args []string, dryRun bool, port int)
 		zap.String("config_file", configFile),
 		zap.String("log_level", cfg.LogLevel),
 		zap.Bool("dry_run", dryRun),
-		zap.Int("port", port))
+		zap.Int("port", port),
+		zap.Bool("remove_existing", removeExisting))
 
 	// Validate port range
 	if port <= 0 || port > 65535 {
@@ -91,11 +99,19 @@ func runAllowCurrentIP(cmd *cobra.Command, args []string, dryRun bool, port int)
 	log.Info("Detected current public IP", zap.String("ip", currentIP))
 
 	if dryRun {
-		log.Info("DRY RUN: Would add SSH rule to firewall",
-			zap.String("firewall_id", cfg.DigitalOcean.FirewallID),
-			zap.String("source_ip", currentIP),
-			zap.Int("port", port),
-			zap.String("protocol", "tcp"))
+		if removeExisting {
+			log.Info("DRY RUN: Would remove existing SSH rules and add current IP",
+				zap.String("firewall_id", cfg.DigitalOcean.FirewallID),
+				zap.String("source_ip", currentIP),
+				zap.Int("port", port),
+				zap.String("protocol", "tcp"))
+		} else {
+			log.Info("DRY RUN: Would append current IP to existing SSH rules",
+				zap.String("firewall_id", cfg.DigitalOcean.FirewallID),
+				zap.String("source_ip", currentIP),
+				zap.Int("port", port),
+				zap.String("protocol", "tcp"))
+		}
 		log.Info("DRY RUN: Execution completed successfully")
 		return nil
 	}
@@ -104,7 +120,7 @@ func runAllowCurrentIP(cmd *cobra.Command, args []string, dryRun bool, port int)
 	doClient := digitalocean.NewClient(cfg.DigitalOcean.APIKey, log)
 
 	// Add SSH rule to firewall
-	err = doClient.AddSSHRule(ctx, cfg.DigitalOcean.FirewallID, currentIP, port)
+	err = doClient.AddSSHRule(ctx, cfg.DigitalOcean.FirewallID, currentIP, port, removeExisting)
 	if err != nil {
 		log.Error("Failed to add SSH rule to firewall", zap.Error(err))
 		return fmt.Errorf("failed to add SSH rule to firewall: %w", err)

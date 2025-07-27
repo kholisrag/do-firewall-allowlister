@@ -9,6 +9,12 @@ description: "Code Rules"
 
 1. Utilize goreleaser and or taskfile to check and crosscheck, like build, test, etc.
 
+2. to run the binary can use below, after build with goreleaser and taskfile
+
+```shell
+./dist/do-firewall-allowlister_darwin_arm64_v8.0/do-firewall-allowlister --config ./config.yaml <sub_command>
+```
+
 # Golang Library Rules
 
 1. use https://github.com/golang-standards/project-layout for project directory and naming standard
